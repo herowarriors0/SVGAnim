@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVG Animáció Generátor</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">
+                <i class="fas fa-play-circle"></i>
+                <h1>SVG Animátor</h1>
+            </div>
+            <p class="subtitle">Készíts lenyűgöző animációkat az SVG fájljaidból</p>
+        </header>
+
+        <main class="main-content">
+            <section class="upload-section">
+                <div class="upload-tabs">
+                    <button class="tab-btn active" id="uploadTab" onclick="switchTab('upload')">
+                        <i class="fas fa-upload"></i>
+                        Fájl Feltöltése
+                    </button>
+                    <button class="tab-btn" id="itemsTab" onclick="switchTab('items')">
+                        <i class="fas fa-cube"></i>
+                        Minecraft Itemek
+                    </button>
+                </div>
+
+                <div class="tab-content" id="uploadContent">
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-content">
+                            <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                            <h3>SVG Fájl Feltöltése</h3>
+                            <p>Húzd ide a fájlt vagy kattints a tallózáshoz</p>
+                            <input type="file" id="fileInput" accept=".svg" hidden>
+                            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                                <i class="fas fa-folder-open"></i>
+                                Fájl Kiválasztása
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="itemsContent" style="display: none;">
+                    <div class="items-browser">
+                        <div class="search-box">
+                            <input type="text" id="itemSearch" placeholder="Keresés..." onkeyup="filterItems()">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <div class="items-grid" id="itemsGrid">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="file-info" id="fileInfo" style="display: none;">
+                    <div class="file-details">
+                        <i class="fas fa-file-code"></i>
+                        <div class="file-text">
+                            <span class="file-name" id="fileName"></span>
+                            <span class="file-size" id="fileSize"></span>
+                        </div>
+                        <button class="remove-file" id="removeFile">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="settings-section">
+                <h3><i class="fas fa-cog"></i> Animáció Beállítások</h3>
+                
+                <div class="settings-grid">
+                    <div class="setting-group">
+                        <label for="animationDuration">Animáció Időtartama (mp):</label>
+                        <input type="range" id="animationDuration" min="1" max="10" value="2" step="0.5">
+                        <span class="range-value" id="durationValue">2 mp</span>
+                    </div>
+                    
+                    <div class="setting-group color-picker-group">
+                        <label for="backgroundColor">Háttérszín:</label>
+                        <div class="color-picker-container">
+                            <input type="color" id="backgroundColor" value="#000000">
+                            <input type="text" id="colorHex" value="#000000" maxlength="7" placeholder="#000000">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="preview-section" id="previewSection" style="display: none;">
+                <h3><i class="fas fa-eye"></i> SVG Előnézet</h3>
+                <div class="svg-preview" id="svgPreview"></div>
+            </section>
+
+            <section class="generate-section">
+                <button class="generate-btn" id="generateBtn" disabled>
+                    <i class="fas fa-magic"></i>
+                    <span>Animáció Generálása</span>
+                    <div class="btn-glow"></div>
+                </button>
+            </section>
+
+            <section class="loading-section" id="loadingSection" style="display: none;">
+                <div class="loading-spinner">
+                    <div class="spinner"></div>
+                    <p>Animáció generálása folyamatban...</p>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="result-section" id="resultSection" style="display: none;">
+                <h3><i class="fas fa-check-circle"></i> Animáció Kész!</h3>
+                <div class="result-content">
+                    <div class="video-preview">
+                        <h4>Generált Animáció:</h4>
+                    </div>
+                    
+                    <div class="download-section">
+                        <button class="download-btn" id="downloadBtn">
+                            <i class="fas fa-download"></i>
+                            Videó Letöltése (Full HD)
+                        </button>
+                        <p class="download-info">
+                            A letöltött videó Full HD felbontásban (1920x1080) készül, WebM formátumban.
+                        </p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <p>&copy; 2025 SVG Animátor. Készítve Manim könyvtárral.</p>
+            <div class="footer-links">
+                <a href="#" class="footer-link">
+                    <i class="fab fa-github"></i>
+                    GitHub
+                </a>
+                <a href="#" class="footer-link">
+                    <i class="fas fa-book"></i>
+                    Dokumentáció
+                </a>
+            </div>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
