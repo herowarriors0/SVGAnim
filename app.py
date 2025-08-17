@@ -283,11 +283,17 @@ def list_items():
     except Exception as e:
         return jsonify({'error': f'Items error: {str(e)}'}), 500
 
-@app.route('/api/items/<filename>')
+from urllib.parse import unquote
+
+@app.route('/api/items/<path:filename>')
 def serve_item(filename):
     try:
-        item_path = os.path.join(ITEMS_FOLDER, filename)
-        if os.path.exists(item_path) and filename.lower().endswith('.svg'):
+        decoded_filename = unquote(filename)
+        if not decoded_filename.lower().endswith('.svg'):
+            return jsonify({'error': 'Invalid file type'}), 400
+        safe_filename = os.path.basename(decoded_filename)
+        item_path = os.path.join(ITEMS_FOLDER, safe_filename)
+        if os.path.exists(item_path):
             return send_file(item_path, mimetype='image/svg+xml')
         else:
             return jsonify({'error': 'Item not found'}), 404
