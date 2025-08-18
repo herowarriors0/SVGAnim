@@ -1,6 +1,8 @@
 let uploadedFile = null;
 let currentFileId = null;
 let isMinecraftItem = false;
+let minecraftData = [];
+let selectedCategories = { blocks: true, items: true };
 const API_BASE = 'http://localhost:5000/api';
 
 const uploadArea = document.getElementById('uploadArea');
@@ -26,7 +28,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeEventListeners();
     updateRangeValues();
     updateColorPicker();
-    loadMinecraftItems();
+    loadMinecraftData();
     checkBackendStatus();
 });
 
@@ -172,16 +174,16 @@ function showPreview(file) {
     reader.readAsText(file);
 }
 
-async function uploadMinecraftItem(filename) {
+async function uploadMinecraftItem(filename, type) {
     try {
-        showNotification('Minecraft item kiválasztása...', 'info');
+        showNotification(`Minecraft ${type} kiválasztása...`, 'info');
         
         const response = await fetch(`${API_BASE}/upload-minecraft-item`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ filename: filename })
+            body: JSON.stringify({ filename: filename, type: type })
         });
         
         if (!response.ok) {
@@ -194,7 +196,8 @@ async function uploadMinecraftItem(filename) {
             currentFileId = result.file_id;
             isMinecraftItem = Boolean(result.is_minecraft_item);
             
-            const response2 = await fetch(`/api/items/${filename}`);
+            const apiUrl = type === 'block' ? `/api/blocks/${filename}` : `/api/items/${filename}`;
+            const response2 = await fetch(apiUrl);
             const blob = await response2.blob();
             uploadedFile = new File([blob], result.filename, { type: 'image/svg+xml' });
             
@@ -212,7 +215,7 @@ async function uploadMinecraftItem(filename) {
             throw new Error(result.error || 'Minecraft item selection failed');
         }
     } catch (error) {
-        showNotification(`Minecraft item hiba: ${error.message}`, 'error');
+        showNotification(`Minecraft ${type} hiba: ${error.message}`, 'error');
     }
 }
 
@@ -392,185 +395,6 @@ function simulateProgress() {
     updateStep();
 }
 
-function showLoading() {
-    loadingSection.style.display = 'block';
-    loadingSection.classList.add('fade-in');
-    resultSection.style.display = 'none';
-    
-    loadingSection.scrollIntoView({ behavior: 'smooth' });
-}
-
-async function createAnimationVideo() {
-    const title = animationTitle.value || 'Animáció';
-    const duration = parseFloat(animationDuration.value);
-    const wait = parseFloat(waitTime.value);
-    const bgColor = backgroundColor.value;
-    
-    progressFill.style.width = '10%';
-    updateLoadingMessage('Canvas beállítása...');
-    
-    const canvas = document.createElement('canvas');
-    canvas.width = 1920;
-    canvas.height = 1080;
-    const ctx = canvas.getContext('2d');
-    
-    progressFill.style.width = '20%';
-    updateLoadingMessage('SVG elemzése...');
-    
-    const parser = new DOMParser();
-    const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
-    const svgElement = svgDoc.querySelector('svg');
-    if (!svgElement) throw new Error('Invalid SVG content');
-    progressFill.style.width = '30%';
-    updateLoadingMessage('Animáció renderelése...');
-
-    const stream = canvas.captureStream(60);
-    const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'video/webm;codecs=vp9'
-    });
-    const chunks = [];
-    mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
-
-    return new Promise((resolve, reject) => {
-        mediaRecorder.onstop = () => {
-            const blob = new Blob(chunks, { type: 'video/webm' });
-            resolve(blob);
-        };
-        mediaRecorder.onerror = reject;
-        mediaRecorder.start();
-        animateOutlineScene(ctx, canvas, svgElement, title, duration, wait, bgColor, () => {
-            progressFill.style.width = '100%';
-            updateLoadingMessage('Videó finalizálása...');
-            mediaRecorder.stop();
-        });
-    });
-}
-
-function animateOutlineScene(ctx, canvas, svgElement, title, duration, wait, bgColor, onComplete) {
-    const paths = Array.from(svgElement.querySelectorAll('path'));
-    if (paths.length === 0) {
-        Array.from(svgElement.children).forEach(el => { if (el.tagName !== 'defs') paths.push(el); });
-    }
-    let vb = svgElement.getAttribute('viewBox');
-    let [vbX, vbY, vbW, vbH] = vb ? vb.split(/\s+/).map(Number) : [0,0,
-        Number(svgElement.getAttribute('width'))||100,
-        Number(svgElement.getAttribute('height'))||100];
-    const fps = 60;
-    const writeFrames = Math.floor(duration * fps);
-    const waitFrames = Math.floor(wait * fps);
-    const totalFrames = writeFrames + waitFrames + fps;
-    let currentFrame = 0;
-    const pathLengths = paths.map(p => {
-        try {
-            const d = p.getAttribute('d');
-            if (!d) return 0;
-            const temp = document.createElementNS('http://www.w3.org/2000/svg','path');
-            temp.setAttribute('d', d);
-            return temp.getTotalLength();
-        } catch { return 0; }
-    });
-    function drawFrame() {
-        ctx.save();
-        ctx.clearRect(0,0,canvas.width,canvas.height);
-        ctx.fillStyle = bgColor;
-        ctx.fillRect(0,0,canvas.width,canvas.height);
-        const scale = Math.min(canvas.width/vbW, canvas.height/vbH)*0.6;
-        const offsetX = (canvas.width - vbW*scale)/2;
-        const offsetY = (canvas.height - vbH*scale)/2 - canvas.height*0.1;
-        ctx.save();
-        ctx.translate(offsetX, offsetY);
-        ctx.scale(scale, scale);
-        for (let i=0; i<paths.length; ++i) {
-            const p = paths[i];
-            const d = p.getAttribute('d');
-            if (!d) continue;
-            const len = pathLengths[i];
-            ctx.save();
-            ctx.beginPath();
-            const path2d = new Path2D(d);
-            let drawLen = len * Math.min(1, currentFrame/writeFrames);
-            ctx.setLineDash([drawLen, len-drawLen]);
-            ctx.lineDashOffset = 0;
-            ctx.strokeStyle = p.getAttribute('stroke') || '#fff';
-            ctx.lineWidth = (parseFloat(p.getAttribute('stroke-width'))||2)/scale;
-            ctx.stroke(path2d);
-            ctx.restore();
-        }
-        ctx.restore();
-        ctx.save();
-        ctx.font = `bold ${Math.round(canvas.height*0.06)}px Arial, sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'top';
-        ctx.fillStyle = '#fff';
-        let textY = canvas.height*0.7;
-        let textToShow = '';
-        if (currentFrame < writeFrames) {
-            let chars = Math.floor(title.length * (currentFrame/writeFrames));
-            textToShow = title.substring(0, chars);
-        } else {
-            textToShow = title;
-        }
-        ctx.fillText(textToShow, canvas.width/2, textY);
-        ctx.restore();
-        ctx.restore();
-        currentFrame++;
-        const overallProgress = 30 + (currentFrame / totalFrames) * 60;
-        progressFill.style.width = `${overallProgress}%`;
-        if (currentFrame < totalFrames) {
-            requestAnimationFrame(drawFrame);
-        } else {
-            onComplete();
-        }
-    }
-    drawFrame();
-}
-
-function updateLoadingMessage(message) {
-    const loadingText = loadingSection.querySelector('p');
-    if (loadingText) {
-        loadingText.textContent = message;
-    }
-}
-
-function sanitizeFileName(name) {
-    return name.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9]/g, '_');
-}
-
-async function copyCode() {
-    try {
-        await navigator.clipboard.writeText(generatedCode.textContent);
-        showNotification('Kód sikeresen vágólapra másolva!', 'success');
-        
-        copyCodeBtn.innerHTML = '<i class="fas fa-check"></i> Másolva!';
-        setTimeout(() => {
-            copyCodeBtn.innerHTML = '<i class="fas fa-copy"></i> Kód Másolása';
-        }, 2000);
-    } catch (err) {
-        showNotification('Hiba a vágólapra másolás során!', 'error');
-    }
-}
-
-function downloadPythonFile() {
-    if (!window.currentVideoBlob) {
-        showNotification('Nincs elérhető videó a letöltéshez!', 'error');
-        return;
-    }
-    
-    const fileName = `${sanitizeFileName(uploadedFile.name)}_animation.webm`;
-    
-    const url = URL.createObjectURL(window.currentVideoBlob);
-    
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    showNotification('Animáció videó letöltése megkezdődött!', 'success');
-}
-
 function formatFileSize(bytes) {
     if (bytes === 0) return '0 Bytes';
     
@@ -706,79 +530,232 @@ window.addEventListener('load', function() {
 
 function switchTab(tabName) {
     const uploadTab = document.getElementById('uploadTab');
-    const itemsTab = document.getElementById('itemsTab');
+    const minecraftTab = document.getElementById('minecraftTab');
     const uploadContent = document.getElementById('uploadContent');
-    const itemsContent = document.getElementById('itemsContent');
+    const minecraftContent = document.getElementById('minecraftContent');
 
     if (tabName === 'upload') {
         uploadTab.classList.add('active');
-        itemsTab.classList.remove('active');
+        minecraftTab.classList.remove('active');
         uploadContent.style.display = 'block';
-        itemsContent.style.display = 'none';
-    } else {
-        itemsTab.classList.add('active');
+        minecraftContent.style.display = 'none';
+    } else if (tabName === 'minecraft') {
+        minecraftTab.classList.add('active');
         uploadTab.classList.remove('active');
-        itemsContent.style.display = 'block';
+        minecraftContent.style.display = 'block';
         uploadContent.style.display = 'none';
     }
 }
 
-async function loadMinecraftItems() {
+async function loadMinecraftData() {
     try {
-        const response = await fetch('/api/items');
+        const response = await fetch('/api/minecraft');
         if (response.ok) {
-            const items = await response.json();
-            displayItems(items);
+            minecraftData = await response.json();
+            displayMinecraft();
         }
     } catch (error) {
-        console.log('Items folder not available');
-        document.getElementById('itemsGrid').innerHTML = `
+        console.log('Minecraft data not available');
+        document.getElementById('minecraftGrid').innerHTML = `
             <div style="grid-column: 1/-1; text-align: center; color: #b0b0b0; padding: 40px;">
                 <i class="fas fa-folder-open" style="font-size: 2rem; margin-bottom: 10px;"></i>
-                <p>Az 'items' mappa nem található.</p>
-                <p>Hozz létre egy 'items' mappát SVG fájlokkal.</p>
+                <p>Az 'items' vagy 'blocks' mappa nem található.</p>
+                <p>Hozz létre 'items' és 'blocks' mappákat SVG fájlokkal.</p>
             </div>
         `;
     }
 }
 
-function displayItems(items) {
-    const grid = document.getElementById('itemsGrid');
-    grid.innerHTML = items.map(item => `
-        <div class="item-card" onclick="selectItem('${item.filename}', '${item.name}')">
-            <img src="/api/items/${item.filename}" alt="${item.name}" loading="lazy">
-            <div class="item-name">${item.name}</div>
-        </div>
-    `).join('');
-}
-
-function filterItems() {
-    const searchTerm = document.getElementById('itemSearch').value.toLowerCase();
-    const items = document.querySelectorAll('.item-card');
+function displayMinecraft() {
+    const grid = document.getElementById('minecraftGrid');
+    const filteredData = filterByCategories(minecraftData);
     
-    items.forEach(item => {
-        const name = item.querySelector('.item-name').textContent.toLowerCase();
-        if (name.includes(searchTerm)) {
-            item.style.display = 'flex';
-        } else {
-            item.style.display = 'none';
-        }
+    if (filteredData.length === 0) {
+        grid.innerHTML = `
+            <div style="grid-column: 1/-1; text-align: center; color: #b0b0b0; padding: 40px;">
+                <i class="fas fa-search" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                <p>Nincs találat a kiválasztott kategóriákban.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const itemsHTML = filteredData.map(item => {
+        const imgSrc = `/api/${item.type === 'block' ? 'blocks' : 'items'}/${item.filename}`;
+        return `
+            <div class="item-card" onclick="selectMinecraft(this, '${item.filename}', '${item.name}', '${item.type}')">
+                <div class="item-image-container" data-type="${item.type}" data-filename="${item.filename}">
+                    <img src="${imgSrc}" alt="${item.name}" loading="lazy" style="width:32px;height:32px;display:block;">
+                </div>
+                <div class="item-name">${item.name}</div>
+            </div>
+        `;
+    }).join('');
+    
+    grid.innerHTML = itemsHTML;
+
+    const blockImages = grid.querySelectorAll('.item-image-container[data-type="block"] img');
+    blockImages.forEach((img) => {
+        img.addEventListener('load', () => {
+            try {
+                img.style.width = '32px';
+                img.style.height = '32px';
+                img.style.display = 'block';
+            } catch (e) {
+            }
+        });
+
+        img.addEventListener('error', async () => {
+            try {
+                const response = await fetch(img.src);
+                const svgText = await response.text();
+
+                const container = img.parentElement;
+                container.innerHTML = svgText;
+
+                const svg = container.querySelector('svg');
+                if (svg) {
+                    svg.style.width = '32px';
+                    svg.style.height = '32px';
+                    svg.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Failed to load block SVG (onerror fallback):', error);
+            }
+        });
     });
 }
 
-async function selectItem(filename, name) {
+function filterByCategories(data) {
+    return data.filter(item => {
+        if (item.type === 'block' && !selectedCategories.blocks) return false;
+        if (item.type === 'item' && !selectedCategories.items) return false;
+        return true;
+    });
+}
+
+function toggleCategory(category) {
+    selectedCategories[category] = !selectedCategories[category];
+    
+    const btn = document.getElementById(category + 'Btn');
+    if (selectedCategories[category]) {
+        btn.classList.add('active');
+        btn.classList.remove('disabled');
+    } else {
+        btn.classList.remove('active');
+        btn.classList.add('disabled');
+    }
+    
+    displayMinecraft();
+}
+
+function filterMinecraft() {
+    const searchTerm = document.getElementById('minecraftSearch').value.toLowerCase();
+    
+    if (!searchTerm.trim()) {
+        displayMinecraft();
+        return;
+    }
+    
+    const searchResults = minecraftData.filter(item => 
+        item.name.toLowerCase().includes(searchTerm)
+    );
+    
+    const hasBlocks = searchResults.some(item => item.type === 'block');
+    const hasItems = searchResults.some(item => item.type === 'item');
+    
+    selectedCategories.blocks = hasBlocks;
+    selectedCategories.items = hasItems;
+    
+    const blocksBtn = document.getElementById('blocksBtn');
+    const itemsBtn = document.getElementById('itemsBtn');
+    
+    if (hasBlocks) {
+        blocksBtn.classList.add('active');
+        blocksBtn.classList.remove('disabled');
+    } else {
+        blocksBtn.classList.remove('active');
+        blocksBtn.classList.add('disabled');
+    }
+    
+    if (hasItems) {
+        itemsBtn.classList.add('active');
+        itemsBtn.classList.remove('disabled');
+    } else {
+        itemsBtn.classList.remove('active');
+        itemsBtn.classList.add('disabled');
+    }
+    
+    const grid = document.getElementById('minecraftGrid');
+    const filteredResults = filterByCategories(searchResults);
+    
+    if (filteredResults.length === 0) {
+        grid.innerHTML = `
+            <div style="grid-column: 1/-1; text-align: center; color: #b0b0b0; padding: 40px;">
+                <i class="fas fa-search" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                <p>Nincs találat: "${searchTerm}"</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const itemsHTML = filteredResults.map(item => {
+        const imgSrc = `/api/${item.type === 'block' ? 'blocks' : 'items'}/${item.filename}`;
+        return `
+            <div class="item-card" onclick="selectMinecraft(this, '${item.filename}', '${item.name}', '${item.type}')">
+                <div class="item-image-container" data-type="${item.type}" data-filename="${item.filename}">
+                    <img src="${imgSrc}" alt="${item.name}" loading="lazy" style="width:32px;height:32px;display:block;">
+                </div>
+                <div class="item-name">${item.name}</div>
+            </div>
+        `;
+    }).join('');
+    
+    grid.innerHTML = itemsHTML;
+
+    const blockImages = grid.querySelectorAll('.item-image-container[data-type="block"] img');
+    blockImages.forEach((img) => {
+        img.addEventListener('load', () => {
+            img.style.width = '32px';
+            img.style.height = '32px';
+            img.style.display = 'block';
+        });
+
+        img.addEventListener('error', async () => {
+            try {
+                const response = await fetch(img.src);
+                const svgText = await response.text();
+
+                const container = img.parentElement;
+                container.innerHTML = svgText;
+
+                const svg = container.querySelector('svg');
+                if (svg) {
+                    svg.style.width = '32px';
+                    svg.style.height = '32px';
+                    svg.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Failed to load block SVG (onerror fallback):', error);
+            }
+        });
+    });
+}
+
+async function selectMinecraft(el, filename, name, type) {
     try {
         document.querySelectorAll('.item-card.selected').forEach(card => {
             card.classList.remove('selected');
         });
+        if (el && el.classList) {
+            el.classList.add('selected');
+        }
+
+        await uploadMinecraftItem(filename, type);
         
-        event.target.closest('.item-card').classList.add('selected');
-        
-        await uploadMinecraftItem(filename);
-        
-        showNotification(`${name} kiválasztva! (2x méretben animálva)`, 'success');
+        showNotification(`${name} (${type}) kiválasztva! (2x méretben animálva)`, 'success');
     } catch (error) {
-        console.error('Item selection error:', error);
-        showNotification('Hiba az item kiválasztásakor!', 'error');
+        console.error('Minecraft selection error:', error);
+        showNotification(`Hiba a ${type} kiválasztásakor!`, 'error');
     }
 }

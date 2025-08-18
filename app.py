@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, make_response
 from flask_cors import CORS
 import os
 import tempfile
@@ -28,12 +28,14 @@ UPLOAD_FOLDER = 'uploads'
 OUTPUT_FOLDER = 'outputs'
 SCRIPTS_FOLDER = 'manim_scripts'
 ITEMS_FOLDER = 'items'
+BLOCKS_FOLDER = 'blocks'
 ALLOWED_EXTENSIONS = {'svg'}
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 os.makedirs(SCRIPTS_FOLDER, exist_ok=True)
 os.makedirs(ITEMS_FOLDER, exist_ok=True)
+os.makedirs(BLOCKS_FOLDER, exist_ok=True)
 
 def cleanup_old_files():
     """Clean up files older than 1 hour"""
@@ -104,13 +106,19 @@ def upload_minecraft_item():
     try:
         data = request.get_json()
         filename = data.get('filename')
+        item_type = data.get('type', 'item')
         
         if not filename:
             return jsonify({'error': 'No filename provided'}), 400
         
-        source_path = os.path.join(ITEMS_FOLDER, filename)
+        if item_type == 'block':
+            source_folder = BLOCKS_FOLDER
+        else:
+            source_folder = ITEMS_FOLDER
+            
+        source_path = os.path.join(source_folder, filename)
         if not os.path.exists(source_path):
-            return jsonify({'error': 'Minecraft item not found'}), 404
+            return jsonify({'error': f'Minecraft {item_type} not found'}), 404
         
         file_id = str(uuid.uuid4())
         safe_filename = secure_filename(filename)
@@ -118,14 +126,14 @@ def upload_minecraft_item():
         
         shutil.copy2(source_path, dest_path)
         
-        print(f"Minecraft item copied: {dest_path}")
+        print(f"Minecraft {item_type} copied: {dest_path}")
         
         return jsonify({
             'success': True,
             'file_id': file_id,
             'filename': safe_filename,
             'is_minecraft_item': True,
-            'message': 'Minecraft item sikeresen kiválasztva!'
+            'message': f'Minecraft {item_type} sikeresen kiválasztva!'
         })
         
     except Exception as e:
@@ -326,11 +334,61 @@ def list_items():
                     name = re.sub(r'(?<!^)([A-Z])', r' \1', base_name)
                     items.append({
                         'filename': filename,
-                        'name': name
+                        'name': name,
+                        'type': 'item'
                     })
         return jsonify(sorted(items, key=lambda x: x['name']))
     except Exception as e:
         return jsonify({'error': f'Items error: {str(e)}'}), 500
+
+@app.route('/api/blocks')
+def list_blocks():
+    try:
+        blocks = []
+        if os.path.exists(BLOCKS_FOLDER):
+            for filename in os.listdir(BLOCKS_FOLDER):
+                if filename.lower().endswith('.svg'):
+                    base_name = filename.replace('.svg', '').replace('_', ' ')
+                    name = re.sub(r'(?<!^)([A-Z])', r' \1', base_name)
+                    blocks.append({
+                        'filename': filename,
+                        'name': name,
+                        'type': 'block'
+                    })
+        return jsonify(sorted(blocks, key=lambda x: x['name']))
+    except Exception as e:
+        return jsonify({'error': f'Blocks error: {str(e)}'}), 500
+
+@app.route('/api/minecraft')
+def list_minecraft():
+    try:
+        minecraft_items = []
+        
+        if os.path.exists(ITEMS_FOLDER):
+            for filename in os.listdir(ITEMS_FOLDER):
+                if filename.lower().endswith('.svg'):
+                    base_name = filename.replace('.svg', '').replace('_', ' ')
+                    name = re.sub(r'(?<!^)([A-Z])', r' \1', base_name)
+                    minecraft_items.append({
+                        'filename': filename,
+                        'name': name,
+                        'type': 'item'
+                    })
+        
+        if os.path.exists(BLOCKS_FOLDER):
+            for filename in os.listdir(BLOCKS_FOLDER):
+                if filename.lower().endswith('.svg'):
+                    base_name = filename.replace('.svg', '').replace('_', ' ')
+                    name = re.sub(r'(?<!^)([A-Z])', r' \1', base_name)
+                    minecraft_items.append({
+                        'filename': filename,
+                        'name': name,
+                        'type': 'block'
+                    })
+        
+        return jsonify(sorted(minecraft_items, key=lambda x: x['name']))
+    except Exception as e:
+        return jsonify({'error': f'Minecraft items error: {str(e)}'}), 500
 
 from urllib.parse import unquote
 
@@ -343,11 +401,39 @@ def serve_item(filename):
         safe_filename = os.path.basename(decoded_filename)
         item_path = os.path.join(ITEMS_FOLDER, safe_filename)
         if os.path.exists(item_path):
-            return send_file(item_path, mimetype='image/svg+xml')
+            response = send_file(item_path, mimetype='image/svg+xml')
+            response.headers['Cache-Control'] = 'public, max-age=300'
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
         else:
             return jsonify({'error': 'Item not found'}), 404
     except Exception as e:
         return jsonify({'error': f'Item serve error: {str(e)}'}), 500
+
+@app.route('/api/blocks/<path:filename>')
+def serve_block(filename):
+    try:
+        decoded_filename = unquote(filename)
+        if not decoded_filename.lower().endswith('.svg'):
+            return jsonify({'error': 'Invalid file type'}), 400
+        safe_filename = os.path.basename(decoded_filename)
+        block_path = os.path.join(BLOCKS_FOLDER, safe_filename)
+        if os.path.exists(block_path):
+            with open(block_path, 'r', encoding='utf-8') as f:
+                svg_content = f.read()
+            
+            if 'width=' not in svg_content or 'height=' not in svg_content:
+                svg_content = svg_content.replace('<svg ', '<svg width="32" height="32" ')
+            
+            response = make_response(svg_content)
+            response.headers['Content-Type'] = 'image/svg+xml'
+            response.headers['Cache-Control'] = 'public, max-age=300'
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
+        else:
+            return jsonify({'error': 'Block not found'}), 404
+    except Exception as e:
+        return jsonify({'error': f'Block serve error: {str(e)}'}), 500
 
 @app.route('/')
 def serve_index():
@@ -355,7 +441,18 @@ def serve_index():
 
 @app.route('/<path:filename>')
 def serve_static(filename):
-    return send_file(filename)
+    safe_path = os.path.normpath(filename)
+    if safe_path.startswith('..'):
+        return jsonify({'error': 'Invalid path'}), 400
+
+    if not os.path.exists(safe_path):
+        return jsonify({'error': 'File not found'}), 404
+
+    try:
+        return send_file(safe_path)
+    except Exception as e:
+        print(f"Error serving static file {safe_path}: {e}")
+        return jsonify({'error': f'Static file serve error: {str(e)}'}), 500
 
 @app.route('/api/status')
 def status():

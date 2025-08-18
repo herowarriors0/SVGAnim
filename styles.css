@@ -174,7 +174,47 @@ body::before {
     color: #8a2be2;
 }
 
-.items-grid {
+.category-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    justify-content: center;
+}
+
+.category-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(138, 43, 226, 0.3);
+    border-radius: 10px;
+    padding: 8px 16px;
+    color: #b0b0b0;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.category-btn:hover {
+    border-color: rgba(138, 43, 226, 0.6);
+    background: rgba(138, 43, 226, 0.1);
+    color: #e0e0e0;
+}
+
+.category-btn.active {
+    border-color: #8a2be2;
+    background: rgba(138, 43, 226, 0.2);
+    color: #fff;
+}
+
+.category-btn.disabled {
+    border-color: rgba(128, 128, 128, 0.3);
+    background: rgba(128, 128, 128, 0.05);
+    color: #808080;
+    cursor: not-allowed;
+}
+
+.items-grid, .minecraft-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
     gap: 10px;
@@ -215,6 +255,34 @@ body::before {
     width: 32px;
     height: 32px;
     object-fit: contain;
+    image-rendering: pixelated;
+    background: transparent;
+    display: block;
+    min-width: 32px;
+    min-height: 32px;
+}
+
+.item-image-container {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+.item-image-container svg {
+    width: 32px !important;
+    height: 32px !important;
+    display: block;
+}
+
+.item-card img[src*="blocks"] {
+    image-rendering: auto;
+    filter: contrast(1.1) brightness(1.1);
+    object-fit: cover;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .item-card .item-name {

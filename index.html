@@ -25,9 +25,9 @@
                         <i class="fas fa-upload"></i>
                         Fájl Feltöltése
                     </button>
-                    <button class="tab-btn" id="itemsTab" onclick="switchTab('items')">
+                    <button class="tab-btn" id="minecraftTab" onclick="switchTab('minecraft')">
                         <i class="fas fa-cube"></i>
-                        Minecraft Itemek
+                        Minecraft
                     </button>
                 </div>
 
@@ -46,13 +46,23 @@
                     </div>
                 </div>
 
-                <div class="tab-content" id="itemsContent" style="display: none;">
-                    <div class="items-browser">
+                <div class="tab-content" id="minecraftContent" style="display: none;">
+                    <div class="minecraft-browser">
                         <div class="search-box">
-                            <input type="text" id="itemSearch" placeholder="Keresés..." onkeyup="filterItems()">
+                            <input type="text" id="minecraftSearch" placeholder="Keresés..." onkeyup="filterMinecraft()">
                             <i class="fas fa-search"></i>
                         </div>
-                        <div class="items-grid" id="itemsGrid">
+                        <div class="category-buttons">
+                            <button class="category-btn active" id="blocksBtn" onclick="toggleCategory('blocks')">
+                                <i class="fas fa-cube"></i>
+                                Blokkok
+                            </button>
+                            <button class="category-btn active" id="itemsBtn" onclick="toggleCategory('items')">
+                                <i class="fas fa-gem"></i>
+                                Itemek
+                            </button>
+                        </div>
+                        <div class="minecraft-grid" id="minecraftGrid">
                         </div>
                     </div>
                 </div>
