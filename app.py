@@ -12,6 +12,7 @@ import shutil
 import glob
 import time
 import threading
+import re
 
 app = Flask(__name__)
 
@@ -267,6 +268,8 @@ def preview_video(file_id):
     except Exception as e:
         return jsonify({'error': f'Preview error: {str(e)}'}), 500
 
+import re
+
 @app.route('/api/items')
 def list_items():
     try:
@@ -274,7 +277,8 @@ def list_items():
         if os.path.exists(ITEMS_FOLDER):
             for filename in os.listdir(ITEMS_FOLDER):
                 if filename.lower().endswith('.svg'):
-                    name = filename.replace('.svg', '').replace('_', ' ').title()
+                    base_name = filename.replace('.svg', '').replace('_', ' ')
+                    name = re.sub(r'(?<!^)([A-Z])', r' \1', base_name)
                     items.append({
                         'filename': filename,
                         'name': name
