@@ -111,32 +111,26 @@ async function handleDrop(event) {
 
 async function uploadFileToBackend(file) {
     try {
-        console.log('Uploading file:', file.name);
         showNotification('Fájl feltöltése...', 'info');
         
         const formData = new FormData();
         formData.append('file', file);
-        
-        console.log('Sending upload request...');
         
         const response = await fetch(`${API_BASE}/upload`, {
             method: 'POST',
             body: formData,
         });
         
-        console.log('Upload response status:', response.status);
-        
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
         const result = await response.json();
-        console.log('Upload result:', result);
         
         if (result.success) {
             uploadedFile = file;
             currentFileId = result.file_id;
-            isMinecraftItem = result.is_minecraft_item || false;
+            isMinecraftItem = Boolean(result.is_minecraft_item);
             
             fileName.textContent = result.filename;
             fileSize.textContent = formatFileSize(file.size);
@@ -152,7 +146,6 @@ async function uploadFileToBackend(file) {
             throw new Error(result.error || 'Upload failed');
         }
     } catch (error) {
-        console.error('Upload error:', error);
         showNotification(`Feltöltési hiba: ${error.message}`, 'error');
     }
 }
@@ -181,7 +174,6 @@ function showPreview(file) {
 
 async function uploadMinecraftItem(filename) {
     try {
-        console.log('Uploading Minecraft item:', filename);
         showNotification('Minecraft item kiválasztása...', 'info');
         
         const response = await fetch(`${API_BASE}/upload-minecraft-item`, {
@@ -192,18 +184,15 @@ async function uploadMinecraftItem(filename) {
             body: JSON.stringify({ filename: filename })
         });
         
-        console.log('Minecraft item response status:', response.status);
-        
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
         const result = await response.json();
-        console.log('Minecraft item result:', result);
         
         if (result.success) {
             currentFileId = result.file_id;
-            isMinecraftItem = result.is_minecraft_item;
+            isMinecraftItem = Boolean(result.is_minecraft_item);
             
             const response2 = await fetch(`/api/items/${filename}`);
             const blob = await response2.blob();
@@ -223,56 +212,6 @@ async function uploadMinecraftItem(filename) {
             throw new Error(result.error || 'Minecraft item selection failed');
         }
     } catch (error) {
-        console.error('Minecraft item error:', error);
-        showNotification(`Minecraft item hiba: ${error.message}`, 'error');
-    }
-}
-
-async function uploadMinecraftItem(filename) {
-    try {
-        console.log('Uploading Minecraft item:', filename);
-        showNotification('Minecraft item kiválasztása...', 'info');
-        
-        const response = await fetch(`${API_BASE}/upload-minecraft-item`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ filename: filename })
-        });
-        
-        console.log('Minecraft item response status:', response.status);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const result = await response.json();
-        console.log('Minecraft item result:', result);
-        
-        if (result.success) {
-            currentFileId = result.file_id;
-            isMinecraftItem = result.is_minecraft_item;
-            
-            const response2 = await fetch(`/api/items/${filename}`);
-            const blob = await response2.blob();
-            uploadedFile = new File([blob], result.filename, { type: 'image/svg+xml' });
-            
-            fileName.textContent = result.filename;
-            fileSize.textContent = formatFileSize(blob.size);
-            
-            uploadArea.style.display = 'none';
-            fileInfo.style.display = 'block';
-            
-            showPreview(uploadedFile);
-            enableGeneration();
-            
-            showNotification(result.message, 'success');
-        } else {
-            throw new Error(result.error || 'Minecraft item selection failed');
-        }
-    } catch (error) {
-        console.error('Minecraft item error:', error);
         showNotification(`Minecraft item hiba: ${error.message}`, 'error');
     }
 }
