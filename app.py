@@ -70,8 +70,10 @@ start_cleanup_timer()
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def create_manim_script(svg_path, title, duration, wait_time, bg_color, output_path):
+def create_manim_script(svg_path, title, duration, wait_time, bg_color, output_path, is_minecraft_item=False):
     """Generate the Manim Python script"""
+    scale_factor = "2" if is_minecraft_item else "1"
+    
     script_content = f'''from manim import *
 
 class logo_animation(Scene):
@@ -82,6 +84,9 @@ class logo_animation(Scene):
         # Create SVG object
         m = SVGMobject("{svg_path}")
         
+        # Scale up Minecraft items for better visibility
+        m.scale({scale_factor})
+        
         # Play animation
         self.play(Write(m, run_time={duration}))
 '''
@@ -90,6 +95,43 @@ class logo_animation(Scene):
         f.write(script_content)
     
     return script_content
+
+@app.route('/api/upload-minecraft-item', methods=['POST', 'OPTIONS'])
+def upload_minecraft_item():
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'ok'})
+        
+    try:
+        data = request.get_json()
+        filename = data.get('filename')
+        
+        if not filename:
+            return jsonify({'error': 'No filename provided'}), 400
+        
+        source_path = os.path.join(ITEMS_FOLDER, filename)
+        if not os.path.exists(source_path):
+            return jsonify({'error': 'Minecraft item not found'}), 404
+        
+        file_id = str(uuid.uuid4())
+        safe_filename = secure_filename(filename)
+        dest_path = os.path.join(UPLOAD_FOLDER, f"{file_id}_{safe_filename}")
+        
+        shutil.copy2(source_path, dest_path)
+        
+        print(f"Minecraft item copied: {dest_path}")
+        
+        return jsonify({
+            'success': True,
+            'file_id': file_id,
+            'filename': safe_filename,
+            'is_minecraft_item': True,
+            'message': 'Minecraft item sikeresen kiválasztva!'
+        })
+        
+    except Exception as e:
+        print(f"Minecraft item upload error: {e}")
+        traceback.print_exc()
+        return jsonify({'error': f'Minecraft item upload error: {str(e)}'}), 500
 
 @app.route('/api/upload', methods=['POST', 'OPTIONS'])
 def upload_file():
@@ -119,6 +161,7 @@ def upload_file():
                 'success': True,
                 'file_id': file_id,
                 'filename': filename,
+                'is_minecraft_item': False,
                 'message': 'SVG fájl sikeresen feltöltve!'
             })
         else:
@@ -145,6 +188,7 @@ def generate_animation():
         duration = float(data.get('duration', 2))
         wait_time = float(data.get('wait_time', 2))
         bg_color = data.get('bg_color', '#000000')
+        is_minecraft_item = data.get('is_minecraft_item', False)
         
         if not file_id or not filename:
             return jsonify({'error': 'Missing file information'}), 400
@@ -157,11 +201,12 @@ def generate_animation():
         
         script_path = os.path.join(SCRIPTS_FOLDER, f"{file_id}_animation.py")
         script_content = create_manim_script(
-            svg_abs_path, title, duration, wait_time, bg_color, script_path
+            svg_abs_path, title, duration, wait_time, bg_color, script_path, is_minecraft_item
         )
         
         print(f"Generated script: {script_path}")
         print(f"Script content: {script_content}")
+        print(f"Is Minecraft item: {is_minecraft_item}")
         
         output_dir = os.path.abspath(OUTPUT_FOLDER)
         script_abs_path = os.path.abspath(script_path)
