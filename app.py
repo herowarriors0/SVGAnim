@@ -72,7 +72,7 @@ start_cleanup_timer()
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def create_manim_script(svg_path, title, duration, wait_time, bg_color, output_path, is_minecraft_item=False):
+def create_manim_script(svg_path, title, duration, hold_duration, bg_color, output_path, is_minecraft_item=False):
     """Generate the Manim Python script"""
     scale_factor = "2" if is_minecraft_item else "1"
     
@@ -91,6 +91,9 @@ class logo_animation(Scene):
         
         # Play animation
         self.play(Write(m, run_time={duration}))
+        
+        # Hold the completed animation
+        self.wait({hold_duration})
 '''
     
     with open(output_path, 'w', encoding='utf-8') as f:
@@ -194,7 +197,7 @@ def generate_animation():
         filename = data.get('filename')
         title = data.get('title', 'Animation')
         duration = float(data.get('duration', 2))
-        wait_time = float(data.get('wait_time', 2))
+        hold_duration = float(data.get('hold_duration', 2))
         bg_color = data.get('bg_color', '#000000')
         is_minecraft_item = data.get('is_minecraft_item', False)
         
@@ -209,7 +212,7 @@ def generate_animation():
         
         script_path = os.path.join(SCRIPTS_FOLDER, f"{file_id}_animation.py")
         script_content = create_manim_script(
-            svg_abs_path, title, duration, wait_time, bg_color, script_path, is_minecraft_item
+            svg_abs_path, title, duration, hold_duration, bg_color, script_path, is_minecraft_item
         )
         
         print(f"Generated script: {script_path}")

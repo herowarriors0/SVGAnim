@@ -20,9 +20,11 @@ const downloadBtn = document.getElementById('downloadBtn');
 const progressFill = document.getElementById('progressFill');
 
 const animationDuration = document.getElementById('animationDuration');
+const holdDuration = document.getElementById('holdDuration');
 const backgroundColor = document.getElementById('backgroundColor');
 const colorHex = document.getElementById('colorHex');
 const durationValue = document.getElementById('durationValue');
+const holdDurationValue = document.getElementById('holdDurationValue');
 
 document.addEventListener('DOMContentLoaded', function() {
     initializeEventListeners();
@@ -70,6 +72,7 @@ function initializeEventListeners() {
     removeFile.addEventListener('click', clearFile);
     
     animationDuration.addEventListener('input', updateRangeValues);
+    holdDuration.addEventListener('input', updateRangeValues);
     backgroundColor.addEventListener('change', updateColorPicker);
     colorHex.addEventListener('input', updateColorFromHex);
     
@@ -236,6 +239,7 @@ function clearFile() {
 
 function updateRangeValues() {
     durationValue.textContent = `${animationDuration.value} mp`;
+    holdDurationValue.textContent = `${holdDuration.value} mp`;
 }
 
 function updateColorPicker() {
@@ -333,6 +337,7 @@ async function generateAnimation() {
             file_id: currentFileId,
             filename: uploadedFile.name,
             duration: parseFloat(animationDuration.value),
+            hold_duration: parseFloat(holdDuration.value),
             bg_color: backgroundColor.value,
             is_minecraft_item: isMinecraftItem
         };
