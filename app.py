@@ -76,6 +76,9 @@ def create_manim_script(svg_path, title, duration, hold_duration, bg_color, outp
     """Generate the Manim Python script"""
     scale_factor = "2" if is_minecraft_item else "1"
     
+    # Only add wait if hold_duration > 0
+    wait_line = f"        # Hold the completed animation\n        self.wait({hold_duration})" if hold_duration > 0 else ""
+    
     script_content = f'''from manim import *
 
 class logo_animation(Scene):
@@ -91,9 +94,7 @@ class logo_animation(Scene):
         
         # Play animation
         self.play(Write(m, run_time={duration}))
-        
-        # Hold the completed animation
-        self.wait({hold_duration})
+        {wait_line}
 '''
     
     with open(output_path, 'w', encoding='utf-8') as f:
@@ -223,7 +224,8 @@ def generate_animation():
         script_abs_path = os.path.abspath(script_path)
         
         cmd = [
-            'manim', 
+            '/root/herowarriors.hu/SVGAnim/venv/bin/manim',
+            #'manim', 
             '-qh',
             '--output_file', f"{file_id}_animation.mp4",
             '--media_dir', output_dir,

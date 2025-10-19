@@ -3,7 +3,8 @@ let currentFileId = null;
 let isMinecraftItem = false;
 let minecraftData = [];
 let selectedCategories = { blocks: true, items: true };
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = 'https://svg.herowarriors.hu/api';
+//const API_BASE = 'http://localhost:5000/api';
 
 const uploadArea = document.getElementById('uploadArea');
 const fileInput = document.getElementById('fileInput');
@@ -19,14 +20,17 @@ const resultSection = document.getElementById('resultSection');
 const downloadBtn = document.getElementById('downloadBtn');
 const progressFill = document.getElementById('progressFill');
 
-const animationDuration = document.getElementById('animationDuration');
-const holdDuration = document.getElementById('holdDuration');
-const backgroundColor = document.getElementById('backgroundColor');
-const colorHex = document.getElementById('colorHex');
-const durationValue = document.getElementById('durationValue');
-const holdDurationValue = document.getElementById('holdDurationValue');
+let animationDuration, holdDuration, backgroundColor, colorHex, durationValue, holdDurationValue;
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize DOM element references
+    animationDuration = document.getElementById('animationDuration');
+    holdDuration = document.getElementById('holdDuration');
+    backgroundColor = document.getElementById('backgroundColor');
+    colorHex = document.getElementById('colorHex');
+    durationValue = document.getElementById('durationValue');
+    holdDurationValue = document.getElementById('holdDurationValue');
+    
     initializeEventListeners();
     updateRangeValues();
     updateColorPicker();
@@ -238,8 +242,12 @@ function clearFile() {
 }
 
 function updateRangeValues() {
-    durationValue.textContent = `${animationDuration.value} mp`;
-    holdDurationValue.textContent = `${holdDuration.value} mp`;
+    if (durationValue && animationDuration) {
+        durationValue.textContent = `${animationDuration.value} mp`;
+    }
+    if (holdDurationValue && holdDuration) {
+        holdDurationValue.textContent = `${holdDuration.value} mp`;
+    }
 }
 
 function updateColorPicker() {
